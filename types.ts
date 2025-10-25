@@ -14,4 +14,11 @@ export interface EnergyCenterContent {
     balancedState: string;
     unbalancedState:string;
     relatedConcepts: string[];
+    practicalApplication: string;
+    suggestedImagePrompt: string;
+}
+
+export interface ChatMessage {
+    role: 'user' | 'model';
+    text: string;
 }

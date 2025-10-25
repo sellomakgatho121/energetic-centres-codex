@@ -1,51 +1,272 @@
-
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Energetic Centers Codex</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <style>
-      body {
-        font-family: 'Inter', sans-serif;
-      }
-      .font-serif {
-        font-family: 'Playfair Display', serif;
-      }
-      /* Custom scrollbar for a better look */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #1e293b; /* slate-800 */
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #475569; /* slate-600 */
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #64748b; /* slate-500 */
-      }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap');
+
+        :root {
+            --font-family-sans: 'Roboto', sans-serif;
+            --font-family-display: 'Orbitron', sans-serif;
+
+            --color-background-start: #020617; /* slate-950 */
+            --color-background-end: #1e293b;   /* slate-800 */
+            --color-text-primary: #e2e8f0;   /* slate-200 */
+            --color-text-secondary: #94a3b8; /* slate-400 */
+            --color-accent-cyan: #22d3ee;
+            --color-accent-cyan-glow: rgba(34, 211, 238, 0.3);
+            --color-accent-indigo: #818cf8;
+            --color-accent-amber: #fcd34d;
+            --color-accent-rose: #fb7185;
+            --color-panel-background: rgba(15, 23, 42, 0.6); /* slate-900 with opacity */
+            --color-border: rgba(100, 116, 139, 0.3); /* slate-500 with opacity */
+
+            --font-size-base: 16px;
+            --font-size-lg: 1.125rem;
+            --font-size-xl: 1.25rem;
+            --font-size-2xl: 1.5rem;
+            --font-size-3xl: 1.875rem;
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --font-size-base: 14px;
+                --font-size-lg: 1.1rem;
+                --font-size-xl: 1.25rem;
+                --font-size-2xl: 1.5rem;
+                --font-size-3xl: 1.75rem;
+            }
+        }
+
+
+        body {
+            margin: 0;
+            background-color: var(--color-background-start);
+            color: var(--color-text-primary);
+            font-family: var(--font-family-sans);
+            font-size: var(--font-size-base);
+            overflow: hidden;
+        }
+
+        #root {
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+
+        /* Living Background */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background-size: 200% 200%;
+        }
+
+        body::before {
+            background-image: linear-gradient(115deg, var(--color-background-start) 0%, #0f172a 25%, #334155 75%, var(--color-background-end) 100%);
+            animation: background-pan 25s ease-in-out infinite;
+        }
+        
+        /* Holographic Grid */
+        body::after {
+            background-image:
+                linear-gradient(rgba(100, 116, 139, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(100, 116, 139, 0.1) 1px, transparent 1px);
+            background-size: 3rem 3rem;
+            animation: background-pan 40s linear infinite;
+            opacity: 0.5;
+            z-index: -1;
+        }
+
+        @keyframes background-pan {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--color-text-secondary);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-accent-cyan);
+        }
+
+        /* Crystalline Glass Pane Style */
+        .crystalline-pane {
+            background: var(--color-panel-background);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--color-border);
+            clip-path: polygon(0 2%, 2% 0, 98% 0, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0 98%);
+            position: relative;
+        }
+
+        .crystalline-pane::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            z-index: -1;
+            clip-path: inherit;
+            background: linear-gradient(135deg, var(--color-accent-cyan), var(--color-accent-indigo), var(--color-accent-amber));
+            animation: border-glow 10s ease-in-out infinite;
+            background-size: 200% 200%;
+            opacity: 0;
+            transition: opacity 300ms ease-in-out;
+        }
+
+        .view-enter-active .crystalline-pane::before,
+        .view-enter-done .crystalline-pane::before {
+            opacity: 0.2;
+        }
+        
+        @keyframes border-glow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* View Transitions */
+        @keyframes view-enter {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        @keyframes view-exit {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.98);
+            }
+        }
+
+        .view-enter { animation: view-enter 0.5s forwards ease-out; }
+        .view-exit { animation: view-exit 0.3s forwards ease-in; }
+
+        /* Skeleton Shimmer */
+        .skeleton-shimmer {
+            position: relative;
+            overflow: hidden;
+            background-color: rgba(51, 65, 85, 0.5); /* slate-700 */
+        }
+        .skeleton-shimmer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -150%;
+            width: 150%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(100, 116, 139, 0.3), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            100% {
+                left: 150%;
+            }
+        }
+        
+        /* Radial Glow on Hover */
+        .radial-glow {
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .radial-glow::before {
+            content: "";
+            position: absolute;
+            z-index: -1;
+            left: var(--x, 50%);
+            top: var(--y, 50%);
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle at center, var(--color-accent-cyan-glow) 0, transparent 40%);
+            width: 200px;
+            height: 200px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .radial-glow:hover::before {
+            opacity: 1;
+        }
+
+        /* Aether Weaver Loading Animation */
+        .weaving-thread {
+            position: absolute;
+            left: -100%;
+            width: 150%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--color-accent-rose), transparent);
+            opacity: 0;
+            animation: weave 3s infinite ease-in-out;
+        }
+
+        @keyframes weave {
+            0% { transform: translateX(0); opacity: 0; }
+            20% { opacity: 0.7; }
+            80% { opacity: 0.7; }
+            100% { transform: translateX(150%); opacity: 0; }
+        }
+
+        .weaving-thread:nth-child(1) { top: 20%; animation-delay: 0s; }
+        .weaving-thread:nth-child(2) { top: 40%; animation-delay: 0.5s; background: linear-gradient(90deg, transparent, var(--color-accent-indigo), transparent); }
+        .weaving-thread:nth-child(3) { top: 60%; animation-delay: 1s; }
+        .weaving-thread:nth-child(4) { top: 80%; animation-delay: 1.5s; background: linear-gradient(90deg, transparent, var(--color-accent-cyan), transparent); }
+
+        /* Other utility classes */
+        .font-display { font-family: var(--font-family-display); }
+
     </style>
-  <script type="importmap">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+                fontFamily: {
+                    sans: ['Roboto', 'sans-serif'],
+                    display: ['Orbitron', 'sans-serif'],
+                },
+            }
+          }
+        }
+      </script>
+<script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.1.0/",
-    "react": "https://esm.sh/react@^19.1.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.10.0"
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.27.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "three": "https://aistudiocdn.com/three@^0.180.0"
   }
 }
 </script>
 </head>
-  <body class="bg-slate-900 text-slate-300">
+<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-  </body>
+</body>
 </html>

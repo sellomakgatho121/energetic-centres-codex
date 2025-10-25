@@ -1,144 +1,198 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { EnergyCenterContent, Topic } from '../types';
+import { ENERGY_CENTERS } from '../constants';
+import { generateSpeechForText, decode, decodeAudioData } from '../services/geminiService';
 
-import React from 'react';
-import { Topic, EnergyCenterContent } from '../types';
-import { BookOpenIcon } from './icons/BookOpenIcon';
-import { ChipIcon } from './icons/ChipIcon';
 import { ExclamationTriangleIcon } from './icons/ExclamationTriangleIcon';
+import { ChipIcon } from './icons/ChipIcon';
+import { SpeakerWaveIcon } from './icons/SpeakerWaveIcon';
 import { SpinnerIcon } from './icons/SpinnerIcon';
+import { BookOpenIcon } from './icons/BookOpenIcon';
+import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 
 interface ContentViewProps {
-  topic: Topic | null;
-  content: EnergyCenterContent | null;
-  imageUrl: string | null;
-  isLoading: boolean;
-  error: string | null;
+    content: EnergyCenterContent | null;
+    imageUrl: string | null;
+    isLoading: boolean;
+    error: string | null;
+    onSelectRelated: (topic: Topic) => void;
+    onSelectView: (view: string) => void;
+    onMobileBack: () => void;
 }
 
 const SkeletonLoader: React.FC = () => (
-    <div className="animate-pulse p-8 space-y-8 max-w-4xl mx-auto">
-        <div className="h-10 bg-slate-700 rounded w-3/4 mx-auto"></div>
-        <div className="h-6 bg-slate-700 rounded w-1/2 mx-auto mt-4"></div>
-        
-        <div className="aspect-square bg-slate-700 rounded-lg w-full max-w-md mx-auto my-8"></div>
-
-        <div className="space-y-4">
-            <div className="h-4 bg-slate-700 rounded w-full"></div>
-            <div className="h-4 bg-slate-700 rounded w-full"></div>
-            <div className="h-4 bg-slate-700 rounded w-5/6"></div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="h-20 bg-slate-700 rounded-lg"></div>
-            <div className="h-20 bg-slate-700 rounded-lg"></div>
-            <div className="h-20 bg-slate-700 rounded-lg"></div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="h-32 bg-slate-700 rounded-lg"></div>
-            <div className="h-32 bg-slate-700 rounded-lg"></div>
+    <div className="p-4 sm:p-6 md:p-8 animate-pulse w-full h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-full">
+            <div className="lg:col-span-1 space-y-4">
+                <div className="aspect-square rounded-lg skeleton-shimmer"></div>
+                <div className="h-8 rounded skeleton-shimmer w-3/4 mx-auto"></div>
+                <div className="h-6 rounded skeleton-shimmer w-1/2 mx-auto"></div>
+            </div>
+            <div className="lg:col-span-2 space-y-4">
+                <div className="h-6 rounded skeleton-shimmer w-full"></div>
+                <div className="h-6 rounded skeleton-shimmer w-5/6"></div>
+                <div className="h-24 rounded skeleton-shimmer w-full mt-6"></div>
+                <div className="h-24 rounded skeleton-shimmer w-full"></div>
+            </div>
         </div>
     </div>
 );
 
-const InfoCard: React.FC<{ title: string; children: React.ReactNode; colorClass: string }> = ({ title, children, colorClass }) => (
-    <div className={`bg-slate-800/50 border ${colorClass} rounded-lg p-4 flex flex-col`}>
-        <h3 className="font-semibold text-white mb-2">{title}</h3>
-        <div className="text-slate-300 text-sm flex-grow">{children}</div>
-    </div>
-);
+export const ContentView: React.FC<ContentViewProps> = ({ content, imageUrl, isLoading, error, onSelectRelated, onSelectView, onMobileBack }) => {
+    const [isReading, setIsReading] = useState(false);
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-export const ContentView: React.FC<ContentViewProps> = ({ topic, content, imageUrl, isLoading, error }) => {
-  if (isLoading) {
-    return <SkeletonLoader />;
-  }
+    useEffect(() => {
+        // Cleanup audio on component unmount or when new content is loading
+        return () => {
+            if (audioSourceRef.current) {
+                audioSourceRef.current.stop();
+            }
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close();
+            }
+        };
+    }, []);
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <ExclamationTriangleIcon className="w-16 h-16 text-red-400 mb-4" />
-        <h2 className="text-2xl font-bold text-red-300 mb-2">An Error Occurred</h2>
-        <p className="text-slate-400 max-w-md">{error}</p>
-      </div>
+    const handleReadAloud = async (text: string) => {
+        if (isReading) {
+            if (audioSourceRef.current) {
+                audioSourceRef.current.stop();
+            }
+            setIsReading(false);
+            return;
+        }
+
+        setIsReading(true);
+        try {
+            const audioData = await generateSpeechForText(text);
+            if (audioData) {
+                if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+                    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+                }
+                const ctx = audioContextRef.current;
+                const audioBuffer = await decodeAudioData(decode(audioData), ctx, 24000, 1);
+                const source = ctx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(ctx.destination);
+                source.start();
+                source.onended = () => setIsReading(false);
+                audioSourceRef.current = source;
+            } else {
+                setIsReading(false);
+            }
+        } catch (err) {
+            console.error("Failed to play audio", err);
+            setIsReading(false);
+        }
+    };
+    
+    if (isLoading) return <SkeletonLoader />;
+    if (error) return (
+        <div className="flex flex-col items-center justify-center h-full text-center p-4">
+            <ExclamationTriangleIcon className="w-12 h-12 text-rose-400 mb-4" />
+            <h3 className="text-lg font-semibold text-rose-300">An Error Occurred</h3>
+            <p className="text-slate-400 max-w-sm">{error}</p>
+        </div>
     );
-  }
-  
-  if (!topic || !content) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <BookOpenIcon className="w-24 h-24 text-slate-600 mb-4" />
-        <h2 className="text-3xl font-bold text-slate-400">Select a Topic</h2>
-        <p className="text-slate-500 mt-2">Choose an energy center from the sidebar to begin your exploration.</p>
-      </div>
+    if (!content) return null; // Should be handled by parent, but for type safety
+
+    const InfoCard: React.FC<{ title: string; value: string }> = ({ title, value }) => (
+        <div className="bg-slate-800/50 p-4 rounded-lg">
+            <h4 className="text-sm font-semibold text-cyan-300 mb-1">{title}</h4>
+            <p className="text-slate-300">{value}</p>
+        </div>
     );
-  }
 
-  return (
-    <div className="p-6 md:p-8 lg:p-12 text-slate-200 max-w-4xl mx-auto">
-      <header className="mb-8 text-center">
-        <h2 className="text-4xl md:text-5xl font-serif font-bold text-white leading-tight">{content.title}</h2>
-        <p className="text-xl text-cyan-300 mt-2">{content.sanskritName}</p>
-        <div 
-          className="mt-4 mx-auto h-1 w-24 rounded-full transition-all duration-500"
-          style={{ 
-              backgroundColor: content.color,
-              boxShadow: `0 0 15px ${content.color}` 
-          }}
-        ></div>
-      </header>
+    return (
+        <div className="flex-1 overflow-y-auto relative">
+            <button
+                onClick={onMobileBack}
+                className="md:hidden absolute top-4 left-4 z-20 flex items-center gap-2 rounded-full bg-slate-800/70 p-2 pr-3 text-sm text-slate-300 backdrop-blur-sm transition-colors hover:bg-slate-700/90 active:bg-slate-700"
+            >
+                <ArrowLeftIcon className="h-5 w-5" />
+                Back
+            </button>
+            <div className="p-4 sm:p-6 md:p-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Column (Image & Titles) */}
+                    <div className="lg:col-span-1 flex flex-col items-center text-center">
+                        <div className="w-full max-w-sm aspect-square rounded-lg mb-4 relative overflow-hidden shadow-2xl shadow-black/50 bg-slate-900">
+                             {imageUrl ? (
+                                <img src={imageUrl} alt={`Art for ${content.title}`} className="w-full h-full object-cover" />
+                             ) : (
+                                <div className="w-full h-full skeleton-shimmer"></div>
+                             )}
+                             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                             <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-lg"></div>
+                        </div>
+                        <h1 className="text-3xl font-bold font-display text-white">{content.title}</h1>
+                        <h2 className="text-xl text-cyan-300 font-display">{content.sanskritName}</h2>
+                    </div>
 
-      {imageUrl ? (
-        <div className="my-8 flex justify-center">
-            <img 
-                src={imageUrl} 
-                alt={`Artistic representation of ${content.title}`} 
-                className="rounded-lg shadow-2xl shadow-cyan-500/10 w-full max-w-lg object-cover border-2 border-slate-700"
-            />
-        </div>
-      ) : (
-        <div className="my-8 flex justify-center">
-            <div className="animate-pulse bg-slate-700 rounded-lg w-full max-w-lg aspect-square"></div>
-        </div>
-      )}
-      
-      <section className="mb-8 prose prose-invert prose-lg max-w-none prose-p:text-slate-300 prose-headings:text-white">
-        <h3>Purpose</h3>
-        <p>{content.purpose}</p>
-      </section>
+                    {/* Right Column (Details) */}
+                    <div className="lg:col-span-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                            <InfoCard title="Color" value={content.color} />
+                            <InfoCard title="Element" value={content.element} />
+                            <InfoCard title="Location" value={content.location} />
+                        </div>
+                        
+                        <div className="space-y-6">
+                             <div>
+                                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                                    Purpose
+                                    <button onClick={() => handleReadAloud(content.purpose)} className="text-slate-400 hover:text-cyan-300 transition-colors disabled:opacity-50" disabled={isReading && audioSourceRef.current?.buffer?.duration > 0}>
+                                        {isReading ? <SpinnerIcon className="w-5 h-5 animate-spin"/> : <SpeakerWaveIcon className="w-5 h-5" />}
+                                    </button>
+                                </h3>
+                                <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">{content.purpose}</p>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-white mb-2">Balanced State</h3>
+                                    <p className="text-slate-300 leading-relaxed text-sm bg-slate-800/40 p-3 rounded-md">{content.balancedState}</p>
+                                </div>
+                                 <div>
+                                    <h3 className="text-lg font-semibold text-white mb-2">Unbalanced State</h3>
+                                    <p className="text-slate-300 leading-relaxed text-sm bg-slate-800/40 p-3 rounded-md">{content.unbalancedState}</p>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                                    <BookOpenIcon className="w-5 h-5" />
+                                    Practical Application
+                                </h3>
+                                <p className="text-slate-300 leading-relaxed whitespace-pre-wrap bg-slate-800/40 p-4 rounded-md text-sm">{content.practicalApplication}</p>
+                            </div>
 
-      <section className="mb-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <InfoCard title="Location" colorClass="border-cyan-500/30"><p>{content.location}</p></InfoCard>
-        <InfoCard title="Color" colorClass="border-purple-500/30">
-            <div className="flex items-center gap-3">
-                <div 
-                  className="w-5 h-5 rounded-full border-2 border-slate-600"
-                  style={{ backgroundColor: content.color }}
-                ></div>
-                <span className="font-medium text-white">{content.color}</span>
+                            <div>
+                                <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                                    <ChipIcon className="w-5 h-5" />
+                                    Related Concepts
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {content.relatedConcepts.map(concept => {
+                                        const relatedTopic = ENERGY_CENTERS.find(t => t.cleanedName === concept || t.name === concept);
+                                        return (
+                                            <button
+                                                key={concept}
+                                                onClick={() => relatedTopic ? onSelectRelated(relatedTopic) : onSelectView('inquiry')}
+                                                className="px-3 py-1.5 bg-slate-700/50 text-slate-300 rounded-full text-sm hover:bg-slate-600/70 hover:text-white transition-colors radial-glow"
+                                            >
+                                                {concept}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </InfoCard>
-        <InfoCard title="Element" colorClass="border-emerald-500/30"><p>{content.element}</p></InfoCard>
-      </section>
-
-      <section className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-slate-800/40 p-6 rounded-lg border border-slate-700/50">
-            <h3 className="text-2xl font-serif font-bold text-white mb-3">Balanced State</h3>
-            <p className="text-slate-300 leading-relaxed">{content.balancedState}</p>
-          </div>
-           <div className="bg-slate-800/40 p-6 rounded-lg border border-slate-700/50">
-            <h3 className="text-2xl font-serif font-bold text-white mb-3">Unbalanced State</h3>
-            <p className="text-slate-300 leading-relaxed">{content.unbalancedState}</p>
-          </div>
-      </section>
-
-      <section>
-        <h3 className="text-2xl font-serif font-bold text-white mb-4">Related Concepts</h3>
-        <div className="flex flex-wrap gap-3">
-          {content.relatedConcepts.map((concept, index) => (
-            <div key={index} className="flex items-center gap-2 bg-slate-700/50 text-slate-300 text-sm font-medium px-4 py-2 rounded-full">
-              <ChipIcon className="w-4 h-4 text-cyan-400" />
-              <span>{concept}</span>
-            </div>
-          ))}
         </div>
-      </section>
-    </div>
-  );
+    );
 };
